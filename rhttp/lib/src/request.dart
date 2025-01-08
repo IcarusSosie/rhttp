@@ -272,6 +272,8 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
       return response;
     } else {
       final cancelRefCompleter = Completer<rust_lib.CancellationToken>();
+      print('requestInternalGeneric pre makeHttpRequest : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
       final responseFuture = rust.makeHttpRequest(
         client: request.client?.ref,
         settings: request.settings?.toRustType(),
@@ -286,20 +288,36 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
         cancelable: request.cancelToken != null,
       );
 
+      print('requestInternalGeneric post makeHttpRequest : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
+
       final cancelToken = request.cancelToken;
       if (cancelToken != null) {
         final cancelRef = await cancelRefCompleter.future;
         cancelToken.setRef(cancelRef);
       }
 
+      print('requestInternalGeneric cancelToken : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
+
       final rustResponse = await responseFuture;
+
+      print('requestInternalGeneric await responseFuture : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
 
       HttpResponse response = parseHttpResponse(
         request,
         rustResponse,
       );
 
+
+      print('requestInternalGeneric parseHttpResponse : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
+
       profile?.trackResponse(response);
+
+      print('requestInternalGeneric trackResponse : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
 
       if (interceptors != null) {
         try {
@@ -319,6 +337,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
           Error.throwWithStackTrace(RhttpInterceptorException(request, e), st);
         }
       }
+
+      print('requestInternalGeneric interceptors.afterResponse : ${sw.elapsed.inMilliseconds}ms');
+      sw.reset();
 
       return response;
     }

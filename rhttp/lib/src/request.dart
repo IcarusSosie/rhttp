@@ -26,6 +26,8 @@ import 'package:rhttp/src/util/strings.dart';
 /// the client and also by the static class.
 @internal
 Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
+  final sw = Stopwatch()..start();
+  
   if (request.client?.ref.isDisposed ?? false) {
     throw RhttpClientDisposedException(request);
   }
@@ -48,6 +50,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
       Error.throwWithStackTrace(RhttpInterceptorException(request, e), st);
     }
   }
+
+  print('requestInternalGeneric interceptors.beforeRequest : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
 
   final ProgressNotifier? sendNotifier;
   if (request.onSendProgress != null) {
@@ -77,11 +82,17 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
     sendNotifier = null;
   }
 
+  print('requestInternalGeneric onSendProgress : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
+
   HttpHeaders? headers = request.headers;
   headers = _digestHeaders(
     headers: headers,
     body: request.body,
   );
+
+  print('requestInternalGeneric _digestHeaders : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
 
   // Convert the Dart stream to a Dart2Rust stream
   final requestBodyStream = switch (request.body) {
@@ -92,6 +103,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
       ),
     _ => null,
   };
+
+  print('requestInternalGeneric _createDart2RustStream : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
 
   final ProgressNotifier? receiveNotifier;
   final bool convertBackToBytes;
@@ -122,6 +136,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
     convertBackToBytes = false;
   }
 
+  print('requestInternalGeneric onReceiveProgress : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
+
   bool exceptionByInterceptor = false;
   final url = switch (request.settings?.baseUrl) {
     String baseUrl => baseUrl + request.url,
@@ -133,6 +150,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
     url: url,
     headers: headers,
   );
+
+  print('requestInternalGeneric createDevToolsProfile : ${sw.elapsed.inMilliseconds}ms');
+  sw.reset();
 
   try {
     if (request.expectBody == HttpExpectBody.stream) {
@@ -347,6 +367,9 @@ Future<HttpResponse> requestInternalGeneric(HttpRequest request) async {
       rethrow;
     }
   }
+
+  print('requestInternalGeneric trycatch : ${sw.elapsed.inMilliseconds}ms');
+  sw.stop();
 }
 
 HttpHeaders? _digestHeaders({
